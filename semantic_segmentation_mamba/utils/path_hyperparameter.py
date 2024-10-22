@@ -53,7 +53,7 @@ class Path_Hyperparameter:
     log_wandb_project: str = 'train_whu'  # wandb project name
 
 
-    project_name = f'{log_wandb_project}_{image_size}_{learning_rate}'
+    project_name = f'{log_wandb_project}_{target_image_size}_{learning_rate}'
 
     def state_dict(self):
         return {k: getattr(self, k) for k, _ in Path_Hyperparameter.__dict__.items() \
