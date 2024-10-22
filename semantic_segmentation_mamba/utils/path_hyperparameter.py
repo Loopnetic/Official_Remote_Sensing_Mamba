@@ -39,7 +39,7 @@ class Path_Hyperparameter:
     # data parameter
     original_image_size = 1500
     target_image_size = 1024 #Size after downsampling, needs to be divisible by 8. (Because patch-embedding=4 and encoder division by 2)
-    crop_size = 256 #Size of cropped tiles that the model will be trained on.
+    crop_size = 256 #Size of cropped tiles that the model will be trained on. Needs to divide evenly or be equal to 'target_image_size'
     downsample_ratio = (original_image_size/target_image_size)
     dataset_name = 'your_dataset_name'
     root_dir = '.'  # the root dir of your dataset
