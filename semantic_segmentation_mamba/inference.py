@@ -5,7 +5,7 @@ import logging
 from utils.path_hyperparameter import ph
 import torch
 from torchmetrics import MetricCollection, Accuracy, Precision, Recall, F1Score
-from rs_mamba_ss.rs_mamba_ss import RSM_SS
+from rs_mamba_ss import RSM_SS
 from tqdm import tqdm
 
 
@@ -32,15 +32,12 @@ def train_net(dataset_name, load_checkpoint=True):
     logging.basicConfig(level=logging.INFO)
     logging.info(f'Using device {device}')
     net = RSM_SS(dims=ph.dims, depths=ph.depths, ssm_d_state=ph.ssm_d_state, ssm_dt_rank=ph.ssm_dt_rank, \
-               ssm_ratio=ph.ssm_ratio, mlp_ratio=ph.mlp_ratio, downsample_version=ph.downsample_version, patchembed_version=ph.patchembed_version)
+               ssm_ratio=ph.ssm_ratio, mlp_ratio=ph.mlp_ratio)
     net.to(device=device)
 
     assert ph.load, 'Loading model error, checkpoint ph.load'
     load_model = torch.load(ph.load, map_location=device)
-    if load_checkpoint:
-        net.load_state_dict(load_model['net'])
-    else:
-        net.load_state_dict(load_model)
+    net.load_state_dict(load_model)
     logging.info(f'Model loaded from {ph.load}')
     torch.save(net.state_dict(), f'{dataset_name}_best_model.pth')
 

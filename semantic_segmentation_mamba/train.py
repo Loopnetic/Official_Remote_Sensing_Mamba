@@ -109,7 +109,7 @@ def train_net(dataset_name):
     # 5. Set up model, optimizer, warm_up_scheduler, learning rate scheduler, loss function and other things
 
     net = RSM_SS(dims=ph.dims, depths=ph.depths, ssm_d_state=ph.ssm_d_state, ssm_dt_rank=ph.ssm_dt_rank, \
-               ssm_ratio=ph.ssm_ratio, mlp_ratio=ph.mlp_ratio, downsample_version=ph.downsample_version, patchembed_version=ph.patchembed_version)  # change detection model
+               ssm_ratio=ph.ssm_ratio, mlp_ratio=ph.mlp_ratio)  # change detection model
     net = net.to(device=device)
     optimizer = optim.AdamW(net.parameters(), lr=ph.learning_rate,
                             weight_decay=ph.weight_decay)  # optimizer
