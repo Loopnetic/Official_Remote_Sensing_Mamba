@@ -119,12 +119,12 @@ def train_val_test(
 
         # 按照特定的ratio对图像进行下采样
         b,c,h,w = image.shape
-        image = F.interpolate(image, size=(h//ph.downsample_raito, w//ph.downsample_raito), mode='bilinear', align_corners=False)
-        labels = F.interpolate(labels.unsqueeze(1), size=(h//ph.downsample_raito, w//ph.downsample_raito), mode='bilinear', align_corners=False).squeeze(1)
+        image = F.interpolate(image, size=(int(h//ph.downsample_ratio), int(w//ph.downsample_ratio)), mode='bilinear', align_corners=False)
+        labels = F.interpolate(labels.unsqueeze(1), size=(int(h//ph.downsample_ratio), int(w//ph.downsample_ratio)), mode='bilinear', align_corners=False).squeeze(1)
 
 
         # 对图片按照设定的图像大小进行拆分
-        crop_size = ph.image_size
+        crop_size = ph.crop_size
 
         # 使用unfold方法在H和W维度上提取小块
         # unfold(dimension, size, step)沿着指定维度滑动窗口提取块
