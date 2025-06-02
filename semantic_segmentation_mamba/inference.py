@@ -1,4 +1,4 @@
-import sys
+import sys, os
 from torch.utils.data import DataLoader
 from utils.data_loading import BasicDataset
 import logging
@@ -7,13 +7,28 @@ import torch
 from torchmetrics import MetricCollection, Accuracy, Precision, Recall, F1Score
 from rs_mamba_ss import RSM_SS
 from tqdm import tqdm
+import PIL.Image
+import PIL
+import numpy as np
 
+if ph.gpu_id is not None:
+    os.environ['CUDA_VISIBLE_DEVICES'] = "1"
 
-def train_net(dataset_name, load_checkpoint=True):
+def save_prediction(prediction: torch.Tensor, filepath: str):
+    tensor_softmax = torch.nn.Softmax(dim=0)(prediction)
+    tensor_argmax = torch.argmax(tensor_softmax, dim=0)
+    np_argmax = tensor_argmax.numpy().astype(np.uint8)
+    np_argmax[np_argmax == 1] = 85
+    np_argmax[np_argmax == 2] = 170
+    
+    img_pil = PIL.Image.fromarray(np_argmax,mode='L')
+    img_pil.save(f'{filepath}.png')
+
+def infer_net(dataset_name, load_checkpoint=True, save_prediction_img=False):
     # 1. Create dataset
 
-    test_dataset = BasicDataset(images_dir=f'./{dataset_name}/test/image/',
-                                labels_dir=f'./{dataset_name}/test/label/',
+    test_dataset = BasicDataset(images_dir=f'{ph.root_dir}/{dataset_name}/test/image/',
+                                labels_dir=f'{ph.root_dir}/{dataset_name}/test/label/',
                                 train=False)
     # 2. Create data loaders
     # 2. Create data loaders
@@ -31,7 +46,7 @@ def train_net(dataset_name, load_checkpoint=True):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     logging.basicConfig(level=logging.INFO)
     logging.info(f'Using device {device}')
-    net = RSM_SS(dims=ph.dims, depths=ph.depths, ssm_d_state=ph.ssm_d_state, ssm_dt_rank=ph.ssm_dt_rank, \
+    net = RSM_SS(num_classes=ph.num_classes, dims=ph.dims, depths=ph.depths, ssm_d_state=ph.ssm_d_state, ssm_dt_rank=ph.ssm_dt_rank, \
                ssm_ratio=ph.ssm_ratio, mlp_ratio=ph.mlp_ratio)
     net.to(device=device)
 
@@ -42,27 +57,31 @@ def train_net(dataset_name, load_checkpoint=True):
     torch.save(net.state_dict(), f'{dataset_name}_best_model.pth')
 
     metric_collection = MetricCollection({
-        'accuracy': Accuracy().to(device=device),
-        'precision': Precision().to(device=device),
-        'recall': Recall().to(device=device),
-        'f1score': F1Score().to(device=device)
+        'accuracy': Accuracy(ignore_index=None, num_classes=ph.num_classes, multiclass=True, mdmc_average='global').to(device=device),
+        'precision': Precision(ignore_index=None, num_classes=ph.num_classes, multiclass=True, mdmc_average='global').to(device=device),
+        'recall': Recall(ignore_index=None, num_classes=ph.num_classes, multiclass=True, mdmc_average='global').to(device=device),
+        'f1score': F1Score(ignore_index=None, num_classes=ph.num_classes, multiclass=True, mdmc_average='global').to(device=device)
     })  # metrics calculator
 
     net.eval()
     logging.info('SET model mode to test!')
 
     with torch.no_grad():
-        for batch_img1, labels, name in tqdm(test_loader):
+        for batch_img1, labels, names in tqdm(test_loader):
             batch_img1 = batch_img1.float().to(device)
             labels = labels.float().to(device)
 
             ss_preds = net(batch_img1)
-            ss_preds = torch.sigmoid(ss_preds)
+            
+            if save_prediction_img:
+                save_pred_directory = f"./{os.path.basename(ph.root_dir)}_{os.path.basename(ph.load).replace(".pth","")}")
+                if not os.path.exists(save_pred_directory): os.makedirs(save_pred_directory)
+
+                for pred_img, name in zip(batch_img1, names):
+                    save_prediction(pred_img.detach().cpu(), os.path.join(save_pred_directory,name))
 
             # Calculate and log other batch metrics
-            ss_preds = ss_preds.float()
-            labels = labels.int().unsqueeze(1)
-            metric_collection.update(ss_preds, labels)
+            metric_collection.update(ss_preds.float(), labels.long())
 
             # clear batch variables from memory
             del batch_img1, labels
@@ -77,7 +96,7 @@ def train_net(dataset_name, load_checkpoint=True):
 if __name__ == '__main__':
 
     try:
-        train_net(dataset_name='your_dataset_name')
+        infer_net(dataset_name=ph.dataset_name, save_prediction_img=True)
     except KeyboardInterrupt:
         logging.info('Error')
         sys.exit(0)
